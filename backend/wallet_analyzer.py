@@ -89,7 +89,11 @@ class WalletAnalyzer:
         markets_with_metadata = await self._enrich_with_market_metadata(markets_data)
 
         # Calculate metrics
-        metrics = self._calculate_metrics(markets_with_metadata, trades)
+        metrics = self._calculate_metrics(
+            markets_with_metadata,
+            trades,
+            wallet_address=wallet_address
+        )
 
         return metrics
 
@@ -306,7 +310,8 @@ class WalletAnalyzer:
     def _calculate_metrics(
         self,
         markets: List[Dict],
-        all_trades: List[Dict]
+        all_trades: List[Dict],
+        wallet_address: str
     ) -> Dict:
         """
         Calculate aggregate metrics for the wallet.
@@ -404,8 +409,14 @@ class WalletAnalyzer:
             for m in markets
         ]
 
+        wallet_id = (
+            all_trades[0].get("maker")
+            if all_trades and all_trades[0].get("maker")
+            else wallet_address
+        )
+
         return {
-            "wallet": all_trades[0].get("maker") if all_trades else "unknown",
+            "wallet": wallet_id,
             "hit_rate": round(hit_rate, 4),
             "roi": round(roi, 4),
             "realized_pnl": round(realized_pnl, 2),
