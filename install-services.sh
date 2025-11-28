@@ -9,6 +9,18 @@ echo "PolAlfa Installation Script"
 echo "==================================="
 echo ""
 
+# Step 0: Install nginx if not installed
+if ! command -v nginx &> /dev/null; then
+    echo "Installing nginx..."
+    apt update
+    apt install nginx -y
+    echo "✓ Nginx installed"
+else
+    echo "✓ Nginx already installed"
+fi
+
+echo ""
+
 # Step 1: Install systemd services
 echo "Step 1: Installing systemd services..."
 cp /home/app/polalfa/polalfa.service /etc/systemd/system/

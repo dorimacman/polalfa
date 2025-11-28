@@ -9,7 +9,8 @@ Group=app
 WorkingDirectory=/home/app/polalfa/frontend
 Environment="NODE_ENV=production"
 Environment="PORT=3000"
-ExecStart=/usr/bin/npm start
+Environment="PATH=/home/app/.nvm/versions/node/v20.19.5/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/app/.nvm/versions/node/v20.19.5/bin/npm start
 Restart=always
 RestartSec=10
 StandardOutput=append:/home/app/polalfa/logs/frontend.log
