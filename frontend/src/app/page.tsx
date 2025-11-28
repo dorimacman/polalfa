@@ -4,6 +4,7 @@ import { useState } from 'react'
 import axios from 'axios'
 import WalletInputForm from '@/components/WalletInputForm'
 import Leaderboard from '@/components/Leaderboard'
+import TopWalletsLeaderboard from '@/components/TopWalletsLeaderboard'
 
 export interface MarketDetail {
   market_id: string
@@ -66,62 +67,49 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="container mx-auto px-4 py-12">
-        {/* Header */}
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-3">
-            Pol<span className="text-primary-400">Alfa</span>
-          </h1>
-          <p className="text-xl text-slate-300">
-            Find the alpha wallets on Polymarket
-          </p>
+    <main className="min-h-screen px-4 py-10">
+      <div className="max-w-6xl mx-auto space-y-10">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.25em] text-accent">PolAlfa</p>
+            <h1 className="text-4xl sm:text-5xl font-bold leading-tight" style={{ fontFamily: 'var(--font-mono)' }}>
+              Discover wallets worth copying
+            </h1>
+            <p className="text-foreground/70 mt-3 max-w-2xl">
+              A retro-inspired dashboard that surfaces the most consistent Polymarket traders. Copy their moves or dive into a
+              focused analysis of any address.
+            </p>
+          </div>
+          <div className="card-panel rounded-2xl px-6 py-4 max-w-sm text-sm text-foreground/80">
+            <p className="font-semibold text-accent mb-2">MVP flow</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Leaderboard pulls recent trades and ranks by trader score.</li>
+              <li>Filters out low-activity or one-off lucky wallets.</li>
+              <li>Analyze panel reuses the classic /api/analyze-wallets endpoint.</li>
+            </ul>
+          </div>
         </header>
 
-        {/* Input Form */}
-        <div className="max-w-4xl mx-auto mb-12">
-          <WalletInputForm onSubmit={handleAnalyze} loading={loading} />
-        </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-400"></div>
-            <p className="text-slate-300 mt-4">Analyzing wallets...</p>
+        <section className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <TopWalletsLeaderboard />
           </div>
-        )}
+          <div>
+            <WalletInputForm onSubmit={handleAnalyze} loading={loading} />
+          </div>
+        </section>
 
-        {/* Error State */}
         {error && (
-          <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
-              <p className="text-red-400 text-center">{error}</p>
-            </div>
+          <div className="card-panel rounded-2xl p-4 border border-red-500/50 bg-red-900/10 text-red-100">
+            {error}
           </div>
         )}
 
-        {/* Results */}
         {results && !loading && (
-          <div className="max-w-6xl mx-auto">
+          <section className="space-y-4">
             <Leaderboard data={results} />
-          </div>
+          </section>
         )}
-
-        {/* Footer */}
-        <footer className="text-center mt-16 text-slate-400 text-sm">
-          <p>
-            Powered by{' '}
-            <a
-              href="https://polymarket.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-400 hover:text-primary-300 transition"
-            >
-              Polymarket
-            </a>{' '}
-            official APIs
-          </p>
-        </footer>
       </div>
     </main>
   )

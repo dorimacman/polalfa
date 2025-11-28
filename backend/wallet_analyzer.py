@@ -46,6 +46,95 @@ class WalletAnalyzer:
 
         return start_ts, end_ts
 
+    async def rank_wallets(
+        self,
+        time_range: str,
+        limit: int = 50,
+        offset: int = 0,
+        min_resolved_markets: int = 3,
+        min_volume: float = 50.0,
+        max_single_market_weight: float = 0.6,
+    ) -> List[Dict]:
+        """
+        Discover and rank wallets over a period using existing analysis logic.
+
+        Strategy (MVP, on-the-fly):
+        1. Pull a recent slice of trades in the given time window.
+        2. Aggregate by maker to find active wallets (using volume + trade count).
+        3. Analyze the most active wallets with the existing per-wallet analysis.
+        4. Filter out noisy wallets (low volume, too few resolved markets, or
+           performance dominated by one lucky market).
+        5. Rank by trader_score, then ROI and hit rate as tie-breakers.
+
+        Args:
+            time_range: Supported ranges "7d", "30d", "90d".
+            limit: Number of wallets to return.
+            offset: Wallet-level offset for pagination.
+            min_resolved_markets: Minimum resolved markets to be considered copy-worthy.
+            min_volume: Minimum notional volume traded in the window.
+            max_single_market_weight: If a single market accounts for more than this
+                fraction of resolved stake, the wallet is discarded to avoid
+                one-off lucky wins.
+        """
+        start_ts, end_ts = self._get_time_range_timestamps(time_range)
+
+        # Grab a slice of recent trades to discover active makers.
+        trade_slice = await self.client.get_trades(
+            limit=1000,
+            offset=offset,
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+
+        maker_volume: Dict[str, float] = defaultdict(float)
+
+        for trade in trade_slice:
+            maker = trade.get("maker")
+            if not maker:
+                continue
+            size = float(trade.get("size", 0))
+            price = float(trade.get("price", 1.0))
+            maker_volume[maker] += size * price
+
+        # Take the most active makers as candidates (oversample to reduce noise).
+        sorted_makers = sorted(
+            maker_volume.items(), key=lambda item: item[1], reverse=True
+        )
+        candidate_wallets = [maker for maker, _ in sorted_makers[: limit * 3]]
+
+        analyses: List[Dict] = []
+        for wallet in candidate_wallets:
+            try:
+                analysis = await self.analyze_wallet(wallet_address=wallet, time_range=time_range)
+
+                # Filter: minimum activity and resolution depth
+                if analysis["resolved_markets"] < min_resolved_markets:
+                    continue
+                if analysis["total_volume_traded"] < min_volume:
+                    continue
+
+                # Filter: guard against single lucky market dominating results
+                resolved_markets = [m for m in analysis["markets"] if m["resolved"]]
+                if resolved_markets:
+                    stakes = [m["stake"] for m in resolved_markets]
+                    total_stake = sum(stakes)
+                    if total_stake > 0:
+                        if max(stakes) / total_stake > max_single_market_weight:
+                            continue
+
+                analyses.append(analysis)
+            except Exception as exc:  # noqa: PERF203 - keep broad catch for resilience
+                logger.warning(f"Skipping wallet {wallet} during ranking: {exc}")
+                continue
+
+        ranked = sorted(
+            analyses,
+            key=lambda a: (a["trader_score"], a["roi"], a["hit_rate"]),
+            reverse=True,
+        )
+
+        return ranked[offset : offset + limit]
+
     async def analyze_wallet(
         self,
         wallet_address: str,
@@ -89,7 +178,11 @@ class WalletAnalyzer:
         markets_with_metadata = await self._enrich_with_market_metadata(markets_data)
 
         # Calculate metrics
-        metrics = self._calculate_metrics(markets_with_metadata, trades)
+        metrics = self._calculate_metrics(
+            markets_with_metadata,
+            trades,
+            wallet_address=wallet_address
+        )
 
         return metrics
 
@@ -306,7 +399,8 @@ class WalletAnalyzer:
     def _calculate_metrics(
         self,
         markets: List[Dict],
-        all_trades: List[Dict]
+        all_trades: List[Dict],
+        wallet_address: str
     ) -> Dict:
         """
         Calculate aggregate metrics for the wallet.
@@ -404,8 +498,14 @@ class WalletAnalyzer:
             for m in markets
         ]
 
+        wallet_id = (
+            all_trades[0].get("maker")
+            if all_trades and all_trades[0].get("maker")
+            else wallet_address
+        )
+
         return {
-            "wallet": all_trades[0].get("maker") if all_trades else "unknown",
+            "wallet": wallet_id,
             "hit_rate": round(hit_rate, 4),
             "roi": round(roi, 4),
             "realized_pnl": round(realized_pnl, 2),

@@ -2,7 +2,7 @@
 PolAlfa Backend API
 FastAPI application for analyzing Polymarket trader wallets
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -38,6 +38,21 @@ wallet_analyzer = WalletAnalyzer(polymarket_client)
 class AnalyzeWalletsRequest(BaseModel):
     wallets: List[str]
     range: str  # "7d", "30d", or "90d"
+
+
+class TopWallet(BaseModel):
+    wallet: str
+    hit_rate: float
+    roi: float
+    trader_score: float
+    realized_pnl: float
+    resolved_markets: int
+    last_trade_time: Optional[str]
+
+
+class TopWalletsResponse(BaseModel):
+    range: str
+    wallets: List[TopWallet]
 
 
 class MarketDetail(BaseModel):
@@ -143,6 +158,29 @@ async def analyze_wallets(request: AnalyzeWalletsRequest):
         raise
     except Exception as e:
         logger.error(f"Error in analyze_wallets: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/top-wallets", response_model=TopWalletsResponse)
+async def top_wallets(
+    range: str = Query("30d", pattern="^(7d|30d|90d)$"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Rank and return top-performing wallets for a time window."""
+    try:
+        logger.info(f"Ranking top wallets for range {range} with limit {limit} offset {offset}")
+        ranked = await wallet_analyzer.rank_wallets(
+            time_range=range,
+            limit=limit,
+            offset=offset,
+        )
+
+        return TopWalletsResponse(range=range, wallets=ranked)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in top_wallets: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
