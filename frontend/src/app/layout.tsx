@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Space_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const mono = Space_Mono({ weight: ['400', '700'], subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'PolAlfa - Find the Alpha Wallets on Polymarket',
-  description: 'Analyze Polymarket traders and rank wallets by profitability and consistency',
+  title: 'PolAlfa - Copy top-performing Polymarket wallets',
+  description: 'Discover and copy the most consistent Polymarket traders.',
 }
 
 export default function RootLayout({
@@ -16,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={`${inter.variable} ${mono.variable} bg-background text-foreground antialiased`}>
+        {children}
+      </body>
     </html>
   )
 }
