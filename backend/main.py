@@ -24,7 +24,10 @@ app = FastAPI(
 # CORS configuration - allow frontend on Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your Vercel domain
+    allow_origins=[
+        "https://polalfa.vercel.app",
+        "http://localhost:3000",  # For local development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
