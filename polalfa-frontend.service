@@ -1,0 +1,19 @@
+[Unit]
+Description=PolAlfa Next.js Frontend
+After=network.target
+
+[Service]
+Type=simple
+User=app
+Group=app
+WorkingDirectory=/home/app/polalfa/frontend
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/app/polalfa/logs/frontend.log
+StandardError=append:/home/app/polalfa/logs/frontend-error.log
+
+[Install]
+WantedBy=multi-user.target
